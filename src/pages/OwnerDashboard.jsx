@@ -5,11 +5,12 @@ import { krw, hhmm, formatDateKor } from '../format.js';
 import OwnerHeader from '../components/OwnerHeader.jsx';
 import BottomNav from '../components/BottomNav.jsx';
 
-const STATUS = {
-  none:     { label: '미작성',    cls: 'badge-none' },
-  draft:    { label: '작성 중',   cls: 'badge-draft' },
-  completed:{ label: '정산 완료', cls: 'badge-completed' },
-  dayoff:   { label: '휴무',      cls: 'badge-dayoff' },
+const STATUS_LABEL = { none: '미작성', draft: '작성 중', completed: '정산 완료', dayoff: '휴무' };
+const STATUS_STYLE = {
+  none: { background: '#EFECE4', color: '#6E6759' },
+  draft: { background: 'var(--amber-soft)', color: 'var(--amber)' },
+  completed: { background: 'var(--emerald-soft)', color: 'var(--emerald)' },
+  dayoff: { background: 'var(--sky-soft)', color: 'var(--sky)' },
 };
 
 const shiftMonth = (month, delta) => {
@@ -29,103 +30,98 @@ const dayTitle = (date) => {
 };
 
 function Hero({ d }) {
-  const st = STATUS[d.status] || STATUS.none;
+  const st = d.status;
   const caption =
-    d.status === 'none'
-      ? '아직 오늘 정산이 작성되지 않았어요. 매니저가 입력하면 실시간으로 반영돼요.'
-      : d.status === 'draft'
+    st === 'none'
+      ? '아직 오늘 정산이 없어요. 매니저가 입력하면 실시간으로 올라와요.'
+      : st === 'draft'
         ? `${d.managerName || '매니저'}님이 지금 입력 중이에요 · ${hhmm(d.updatedAt)} 갱신`
-        : d.status === 'dayoff'
-          ? '오늘은 휴무일이에요. 매출 없음.'
+        : st === 'dayoff'
+          ? '오늘은 휴무일이에요 · 매출 없음'
           : `${hhmm(d.completedAt)} 마감 완료 · ${d.managerName || '매니저'}님 작성`;
 
   return (
-    <section className="card p-6 sm:p-8">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <span className="label">오늘 정산 상태</span>
-          <span className={`badge ${st.cls}`}>
-            <span className="dot" />
-            {st.label}
-          </span>
+    <section className="card p-5 sm:p-7">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[15px] shrink-0">📅</span>
+          <span className="num font-bold text-[15px] sm:text-[16px] truncate">{formatDateKor(d.date)}</span>
         </div>
-        <span className="text-[13px]" style={{ color: 'var(--muted)' }}>
-          {formatDateKor(d.date)}
+        <span className="badge shrink-0" style={STATUS_STYLE[st] || {}}>
+          <span className="dot" />
+          {STATUS_LABEL[st] || ''}
         </span>
       </div>
 
-      <div className="mt-7">
+      <div className="mt-5">
         <div className="label">오늘 총매출</div>
-        <div className="mt-2 flex items-baseline gap-2 num">
-          <span className="font-extrabold leading-none tracking-tight text-[44px] min-[420px]:text-[56px] sm:text-[60px] lg:text-[72px]">
-            {krw(d.total)}
-          </span>
-          <span className="text-xl font-bold" style={{ color: 'var(--muted)' }}>원</span>
+        <div className="mt-1.5 num font-extrabold leading-none tracking-tight text-[46px] min-[420px]:text-[54px] sm:text-[64px]">
+          {krw(d.total)}<span className="text-lg font-bold ml-1" style={{ color: 'var(--muted)' }}>원</span>
         </div>
-        <p className="mt-4 text-[14px] font-medium" style={{ color: 'var(--ink-soft)' }}>{caption}</p>
       </div>
+
+      <p className="mt-4 text-[13px] font-medium" style={{ color: 'var(--ink-soft)' }}>{caption}</p>
     </section>
   );
 }
 
-function MethodGrid({ d }) {
+function TodayMethods({ d }) {
   return (
-    <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {PAYMENT_METHODS.map((m) => {
-        const amt = d.items[m.key] || 0;
-        const isCash = m.key === 'cash';
-        return (
-          <div key={m.key} className="card p-4 sm:p-5" style={isCash ? { borderColor: 'var(--accent)', background: 'var(--accent-soft)' } : undefined}>
-            <div className="label">{isCash ? '현금 매출' : m.label}</div>
-            <div className="mt-2 num font-extrabold text-[22px] sm:text-[26px] tracking-tight leading-none">
-              {krw(amt)}
+    <>
+      <div className="label pt-1">오늘 결제수단별 매출</div>
+      <section className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        {PAYMENT_METHODS.map((m) => {
+          const amt = d.items[m.key] || 0;
+          const isCash = m.key === 'cash';
+          return (
+            <div key={m.key} className="rounded-2xl px-4 py-3" style={isCash ? { border: '1.5px solid var(--accent)', background: 'var(--accent-soft)' } : { border: '1px solid var(--line)', background: '#FFFEFB' }}>
+              <div className="label">{isCash ? '현금 매출' : m.label}</div>
+              <div className="mt-1.5 num font-extrabold text-[22px] sm:text-[24px] tracking-tight leading-none">{krw(amt)}</div>
             </div>
-          </div>
-        );
-      })}
-    </section>
+          );
+        })}
+      </section>
+    </>
   );
 }
 
-function CashDiff({ d }) {
+function TodayCash({ d }) {
   if (d.status === 'dayoff') return null;
   return (
-    <section className="card p-5 sm:p-6 flex items-center justify-between gap-4 flex-wrap">
-      <div>
-        <div className="label">현금 차액 · 실제 보유액 − 장부 현금</div>
-        <div className="mt-1.5 text-[13px]" style={{ color: 'var(--muted)' }}>
-          {d.actualCash == null ? '아직 현금 정보가 입력되지 않았어요' : `실제 보유 ${krw(d.actualCash)}원 · 장부 현금 ${krw(d.cashAmount)}원`}
+    <>
+      <div className="label pt-1">현금 차액</div>
+      <section className="card p-4 sm:p-5 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[12.5px]" style={{ color: 'var(--muted)' }}>실제 보유액 − 장부 현금</div>
+          {d.actualCash != null && (
+            <div className="text-[11.5px] mt-0.5" style={{ color: 'var(--muted)' }}>
+              보유 {krw(d.actualCash)} · 장부 {krw(d.cashAmount)}
+            </div>
+          )}
         </div>
-      </div>
-      <div className="num text-right">
-        {d.cashDiff == null ? (
-          <span className="text-lg font-bold" style={{ color: 'var(--muted)' }}>—</span>
-        ) : (
-          <span className="font-extrabold text-[26px] tracking-tight" style={{ color: d.cashDiff < 0 ? 'var(--red)' : 'var(--emerald)' }}>
-            {d.cashDiff < 0 ? '−' : '+'}{krw(Math.abs(d.cashDiff))}
-            <span className="text-base ml-1" style={{ color: 'var(--muted)' }}>원</span>
-          </span>
-        )}
-      </div>
-    </section>
+        <div className="num font-extrabold text-[26px] tracking-tight" style={{ color: d.cashDiff == null ? 'var(--muted)' : (d.cashDiff < 0 ? 'var(--red)' : 'var(--emerald)') }}>
+          {d.cashDiff == null ? '—' : (d.cashDiff < 0 ? '−' : '+') + krw(Math.abs(d.cashDiff)) + '원'}
+        </div>
+      </section>
+    </>
   );
 }
 
-function Note({ d }) {
+function TodayNote({ d }) {
   if (d.status === 'dayoff' || !d.note) return null;
   return (
-    <section className="card p-5 sm:p-6">
-      <div className="label">특이사항</div>
-      <p className="mt-2 text-[15px] font-medium leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{d.note}</p>
+    <section className="card p-4" style={{ background: 'var(--amber-soft)', borderColor: 'transparent' }}>
+      <span className="label mr-2" style={{ color: 'var(--amber)' }}>특이사항</span>
+      <span className="text-[14px] font-medium" style={{ color: 'var(--ink-soft)' }}>{d.note}</span>
     </section>
   );
 }
 
 function StatChip({ label, value, accent }) {
   return (
-    <div className="rounded-xl px-3.5 py-2 flex flex-col" style={{ background: '#F7F4EC' }}>
+    <div className="rounded-xl px-3.5 py-2 flex flex-col min-w-[92px]" style={{ background: '#F7F4EC' }}>
       <span className="text-[11px] font-bold" style={{ color: 'var(--muted)' }}>{label}</span>
-      <span className="num text-[14.5px] font-extrabold leading-none mt-1" style={{ color: accent || 'var(--ink)' }}>{value}</span>
+      <span className="num text-[14.5px] font-extrabold leading-none mt-1 truncate" style={{ color: accent || 'var(--ink)' }}>{value}</span>
     </div>
   );
 }
@@ -170,30 +166,26 @@ function MonthChart({ daily, selDate, onSelect }) {
 
 function DayDetail({ x }) {
   if (!x) return null;
-  const st = STATUS[x.status] || STATUS.none;
+  const st = x.status;
   return (
     <div className="mt-5 border-t" style={{ borderColor: 'var(--line)' }}>
       <div className="flex items-center justify-between gap-3 flex-wrap pt-4">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="font-extrabold text-[16px]">{dayTitle(x.date)}{x.isToday ? ' · 오늘' : ''}</span>
-          <span className={`badge ${st.cls}`}><span className="dot" />{st.label}</span>
+          <span className="badge" style={STATUS_STYLE[st] || {}}><span className="dot" />{STATUS_LABEL[st] || ''}</span>
         </div>
         <div className="num font-extrabold text-[22px]">
-          {x.status === 'dayoff' ? '—' : krw(x.total)}<span className="text-sm ml-1" style={{ color: 'var(--muted)' }}>원</span>
+          {st === 'dayoff' ? '—' : krw(x.total)}<span className="text-sm ml-1" style={{ color: 'var(--muted)' }}>원</span>
         </div>
       </div>
 
-      {x.status === 'dayoff' && (
-        <div className="mt-4 rounded-xl px-4 py-4 text-center text-[14px] font-semibold" style={{ background: 'var(--sky-soft)', color: 'var(--sky)' }}>
-          휴무일이에요 · 매출 없음
-        </div>
+      {st === 'dayoff' && (
+        <div className="mt-4 rounded-xl px-4 py-4 text-center text-[14px] font-semibold" style={{ background: 'var(--sky-soft)', color: 'var(--sky)' }}>휴무일이에요 · 매출 없음</div>
       )}
-      {x.status === 'none' && (
-        <div className="mt-4 rounded-xl px-4 py-4 text-center text-[14px] font-semibold" style={{ background: '#EFECE4', color: '#6E6759' }}>
-          정산이 작성되지 않은 날이에요
-        </div>
+      {st === 'none' && (
+        <div className="mt-4 rounded-xl px-4 py-4 text-center text-[14px] font-semibold" style={{ background: '#EFECE4', color: '#6E6759' }}>정산이 작성되지 않은 날이에요</div>
       )}
-      {(x.status === 'completed' || x.status === 'draft') && (
+      {(st === 'completed' || st === 'draft') && (
         <>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
             {PAYMENT_METHODS.map((m) => (
@@ -227,18 +219,16 @@ function DayDetail({ x }) {
 function MonthCard({ month, monthKey, onPrev, onNext, selDate, onSelect }) {
   const sel = month.daily.find((x) => x.date === selDate) || null;
   return (
-    <section className="card p-5 sm:p-6">
+    <section className="card p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
           <button className="btn btn-ghost h-9 w-9 !p-0 text-[15px] font-extrabold" onClick={onPrev} aria-label="이전 달">‹</button>
-          <div className="card px-4 h-9 grid place-items-center text-[15px] font-extrabold min-w-[108px] justify-center">
-            {monthLabel(monthKey)}
-          </div>
+          <div className="card px-3.5 h-9 grid place-items-center text-[14.5px] font-extrabold min-w-[100px] justify-center">{monthLabel(monthKey)}</div>
           <button className="btn btn-ghost h-9 w-9 !p-0 text-[15px] font-extrabold" onClick={onNext} aria-label="다음 달">›</button>
         </div>
         <div className="text-right">
           <div className="label">월 누적 매출</div>
-          <div className="num font-extrabold text-[26px] sm:text-[30px] tracking-tight leading-none mt-1">
+          <div className="num font-extrabold text-[24px] sm:text-[28px] tracking-tight leading-none mt-1">
             {krw(month.total)}<span className="text-sm ml-1" style={{ color: 'var(--muted)' }}>원</span>
           </div>
         </div>
@@ -253,9 +243,7 @@ function MonthCard({ month, monthKey, onPrev, onNext, selDate, onSelect }) {
 
       <MonthChart daily={month.daily} selDate={selDate} onSelect={onSelect} />
 
-      <div className="mt-2.5 text-right text-[11.5px] font-semibold" style={{ color: 'var(--muted)' }}>
-        막대를 누르면 그날 정산 상세를 볼 수 있어요
-      </div>
+      <div className="mt-2.5 text-right text-[11.5px] font-semibold" style={{ color: 'var(--muted)' }}>막대를 누르면 그날 정산 상세를 볼 수 있어요</div>
 
       <DayDetail x={sel} />
     </section>
@@ -267,13 +255,12 @@ export default function OwnerDashboard({ user, onLogout }) {
   const [month, setMonth] = useState(null);
   const [selDate, setSelDate] = useState(null);
   const [err, setErr] = useState('');
-  const viewingRef = useRef(''); // 현재 보고 있는 월
+  const viewingRef = useRef('');
 
   const loadToday = useCallback(() => {
     api('/api/owner/dashboard')
       .then((x) => {
         setD(x);
-        // 이번 달을 보고 있을 때만 월 카드도 함께 갱신 (실시간 반영)
         if (!viewingRef.current || viewingRef.current === x.month.key) {
           viewingRef.current = x.month.key;
           setMonth(x.month);
@@ -295,18 +282,15 @@ export default function OwnerDashboard({ user, onLogout }) {
 
   useEffect(() => {
     loadToday();
-    const t = setInterval(loadToday, 5000); // 매니저 입력 실시간 반영
+    const t = setInterval(loadToday, 5000);
     return () => clearInterval(t);
   }, [loadToday]);
 
   const goMonth = (delta) => {
     setSelDate(null);
     const next = shiftMonth(viewingRef.current || (d ? d.month.key : ''), delta);
-    if (next === (d?.month.key || viewingRef.current)) {
-      loadToday();
-    } else {
-      loadMonth(next);
-    }
+    if (next === (d?.month.key || viewingRef.current)) loadToday();
+    else loadMonth(next);
   };
 
   return (
@@ -322,11 +306,12 @@ export default function OwnerDashboard({ user, onLogout }) {
       {!d || !month ? (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 mt-10 text-center" style={{ color: 'var(--muted)' }}>불러오는 중…</div>
       ) : (
-        <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-24 sm:pb-10 md:py-8 space-y-4">
+        <main className="max-w-5xl mx-auto px-3 sm:px-6 pt-4 pb-24 sm:pb-10 md:py-8 space-y-4 md:space-y-5">
           <Hero d={d} />
-          <MethodGrid d={d} />
-          <CashDiff d={d} />
-          <Note d={d} />
+          <TodayMethods d={d} />
+          <TodayCash d={d} />
+          <TodayNote d={d} />
+          <div className="label pt-1">월간 매출</div>
           <MonthCard
             month={month}
             monthKey={month.key}
