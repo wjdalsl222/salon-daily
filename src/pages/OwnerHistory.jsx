@@ -5,11 +5,12 @@ import { krw, hhmm } from '../format.js';
 import OwnerHeader from '../components/OwnerHeader.jsx';
 import BottomNav from '../components/BottomNav.jsx';
 
-const STATUS = {
-  none:      { label: '미작성', cls: 'badge-none' },
-  draft:     { label: '작성 중', cls: 'badge-draft' },
-  completed: { label: '정산 완료', cls: 'badge-completed' },
-  dayoff:    { label: '휴무', cls: 'badge-dayoff' },
+const STATUS_LABEL = { none: '미작성', draft: '작성 중', completed: '정산 완료', dayoff: '휴무' };
+const STATUS_STYLE = {
+  none: { background: '#EFECE4', color: '#6E6759' },
+  draft: { background: 'var(--amber-soft)', color: 'var(--amber)' },
+  completed: { background: 'var(--emerald-soft)', color: 'var(--emerald)' },
+  dayoff: { background: 'var(--sky-soft)', color: 'var(--sky)' },
 };
 
 const FILTERS = [
@@ -41,8 +42,40 @@ const dayTitle = (date) => {
   return `${m}월 ${d}일 ${['일', '월', '화', '수', '목', '금', '토'][new Date(y, m - 1, d).getDay()]}요일`;
 };
 
+function Hero({ month, monthTotal, count, onPrev, onNext }) {
+  return (
+    <section className="card p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5">
+          <button className="btn btn-ghost h-9 w-9 !p-0 text-[15px] font-extrabold" onClick={onPrev} aria-label="이전 달">‹</button>
+          <div className="card px-3.5 h-9 grid place-items-center text-[14.5px] font-extrabold min-w-[104px] justify-center">{monthLabel(month)}</div>
+          <button className="btn btn-ghost h-9 w-9 !p-0 text-[15px] font-extrabold" onClick={onNext} aria-label="다음 달">›</button>
+        </div>
+        <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+          <span className="dot" />월간 정산 조회
+        </span>
+      </div>
+
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        <div className="rounded-2xl px-3.5 py-3" style={{ background: 'var(--accent-soft)' }}>
+          <div className="label" style={{ color: 'var(--accent)' }}>월 매출</div>
+          <div className="num font-extrabold text-[22px] sm:text-[26px] leading-none mt-1.5">{krw(monthTotal)}원</div>
+        </div>
+        <div className="rounded-2xl px-3.5 py-3" style={{ background: 'var(--emerald-soft)' }}>
+          <div className="label" style={{ color: 'var(--emerald)' }}>정산 완료</div>
+          <div className="num font-extrabold text-[22px] sm:text-[26px] leading-none mt-1.5">{count('completed')}일</div>
+        </div>
+        <div className="rounded-2xl px-3.5 py-3" style={{ background: 'var(--sky-soft)' }}>
+          <div className="label" style={{ color: 'var(--sky)' }}>휴무</div>
+          <div className="num font-extrabold text-[22px] sm:text-[26px] leading-none mt-1.5">{count('dayoff')}일</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function DayRow({ d, todayDate, onOpen }) {
-  const st = STATUS[d.status] || STATUS.none;
+  const st = d.status;
   const isToday = d.date === todayDate;
   return (
     <div className="card">
@@ -51,7 +84,7 @@ function DayRow({ d, todayDate, onOpen }) {
         onClick={() => onOpen(d.date)}
       >
         <div className="shrink-0 w-11 text-center">
-          <div className="text-[17px] font-extrabold num leading-none">{d.day}</div>
+          <div className="text-[17px] font-extrabold num leading-none" style={{ color: isToday ? 'var(--accent)' : 'var(--ink)' }}>{d.day}</div>
           <div className="text-[11px] font-semibold mt-0.5" style={{ color: d.weekday === 0 ? 'var(--red)' : d.weekday === 6 ? 'var(--sky)' : 'var(--muted)' }}>
             {dowKo(d.date)}
           </div>
@@ -63,13 +96,13 @@ function DayRow({ d, todayDate, onOpen }) {
           </div>
         </div>
 
-        <div className="shrink-0"><span className={`badge ${st.cls}`}><span className="dot" />{st.label}</span></div>
+        <div className="shrink-0"><span className="badge" style={STATUS_STYLE[st] || {}}><span className="dot" />{STATUS_LABEL[st] || ''}</span></div>
 
         <div className="grow text-right num">
-          <div className="font-extrabold text-[18px] leading-none" style={{ color: d.status === 'completed' ? 'var(--ink)' : 'var(--muted)' }}>
-            {d.status === 'dayoff' ? '—' : krw(d.total)}
+          <div className="font-extrabold text-[18px] leading-none" style={{ color: st === 'completed' ? 'var(--ink)' : 'var(--muted)' }}>
+            {st === 'dayoff' ? '—' : krw(d.total)}
           </div>
-          {d.status === 'completed' && d.completedAt && (
+          {st === 'completed' && d.completedAt && (
             <div className="text-[11px] mt-1 font-semibold" style={{ color: 'var(--muted)' }}>{hhmm(d.completedAt)} 마감</div>
           )}
         </div>
@@ -111,43 +144,16 @@ export default function OwnerHistory({ user, onLogout }) {
     <div className="min-h-full">
       <OwnerHeader user={user} onLogout={onLogout} dateLabel={monthLabel(month)} />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-24 sm:pb-10 md:py-8 space-y-4">
-        {/* 월 선택 */}
-        <section className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <button
-              className="btn btn-ghost h-10 w-10 !p-0 text-[16px] font-extrabold"
-              onClick={() => setMonth((m) => shiftMonth(m, -1))}
-              aria-label="이전 달"
-            >‹</button>
-            <div className="card px-5 h-10 grid place-items-center text-[16px] font-extrabold min-w-[110px] justify-center">
-              {monthLabel(month)}
-            </div>
-            <button
-              className="btn btn-ghost h-10 w-10 !p-0 text-[16px] font-extrabold"
-              onClick={() => setMonth((m) => shiftMonth(m, 1))}
-              aria-label="다음 달"
-            >›</button>
-          </div>
+      <main className="max-w-3xl mx-auto px-3 sm:px-6 pt-4 pb-24 sm:pb-10 md:py-8 space-y-4">
+        <Hero
+          month={month}
+          monthTotal={monthTotal}
+          count={count}
+          onPrev={() => setMonth((m) => shiftMonth(m, -1))}
+          onNext={() => setMonth((m) => shiftMonth(m, 1))}
+        />
 
-          {/* 요약 */}
-          <div className="card px-4 py-2.5 flex items-center gap-4">
-            <div>
-              <div className="label">월 매출</div>
-              <div className="num font-extrabold text-[18px] leading-none mt-1">{krw(monthTotal)}</div>
-            </div>
-            <div className="h-8 w-px" style={{ background: 'var(--line)' }} />
-            <div>
-              <div className="label">완료</div>
-              <div className="num font-extrabold text-[18px] leading-none mt-1" style={{ color: 'var(--emerald)' }}>{count('completed')}일</div>
-            </div>
-            <div className="h-8 w-px" style={{ background: 'var(--line)' }} />
-            <div>
-              <div className="label">휴무</div>
-              <div className="num font-extrabold text-[18px] leading-none mt-1" style={{ color: 'var(--sky)' }}>{count('dayoff')}일</div>
-            </div>
-          </div>
-        </section>
+        <div className="label pt-1">날짜별 정산</div>
 
         {/* 상태 필터 */}
         <section className="flex flex-wrap gap-2">
