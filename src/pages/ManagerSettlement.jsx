@@ -42,35 +42,6 @@ function SaveIndicator({ state, savedAt, editing }) {
   );
 }
 
-function Banner({ d, editing, onEdit, onDayoff, onUnDayoff, busy }) {
-  if (d.status === 'dayoff') {
-    return (
-      <div className="rounded-2xl px-5 py-4 flex items-center justify-between gap-3 flex-wrap" style={{ background: 'var(--sky-soft)', color: 'var(--sky)' }}>
-        <div className="font-extrabold text-[15px]">오늘은 휴무로 등록되어 있어요</div>
-        <button className="btn btn-ghost text-[13px] h-9 px-4" disabled={busy} onClick={onUnDayoff}>휴무 취소</button>
-      </div>
-    );
-  }
-  if (d.status === 'completed') {
-    return (
-      <div className="rounded-2xl px-5 py-4 flex items-center justify-between gap-3 flex-wrap" style={{ background: 'var(--emerald-soft)', color: 'var(--emerald)' }}>
-        <div className="font-extrabold text-[15px]">
-          {editing ? '수정 중 · 변경 내용은 자동으로 기록돼요' : `오늘 정산이 완료됐어요 · ${hhmm(d.completedAt)} 마감`}
-        </div>
-        {!editing && (
-          <button className="btn text-[13px] h-9 px-4" style={{ background: 'var(--emerald)', color: '#fff' }} onClick={onEdit}>수정하기</button>
-        )}
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-2xl px-5 py-4 flex items-center justify-between gap-3 flex-wrap" style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}>
-      <div className="font-extrabold text-[15px]">오늘 정산을 입력해 주세요</div>
-      <div className="text-[12.5px] font-semibold">금액 입력은 즉시 원장님 화면에 반영돼요</div>
-    </div>
-  );
-}
-
 // 지폐·동전 단위 (현금 계산 도우미)
 const BILL_UNITS = [
   { label: '5만원', value: 50000, unit: '장' },
@@ -182,6 +153,22 @@ function ConfirmDialog({ open, total, items, diff, note, busy, onClose, onConfir
   );
 }
 
+const STATUS_LABEL = { none: '미작성', draft: '작성 중', completed: '정산 완료', dayoff: '휴무' };
+const STATUS_STYLE = {
+  none: { background: '#EFECE4', color: '#6E6759' },
+  draft: { background: 'var(--amber-soft)', color: 'var(--amber)' },
+  completed: { background: 'var(--emerald-soft)', color: 'var(--emerald)' },
+  dayoff: { background: 'var(--sky-soft)', color: 'var(--sky)' },
+};
+const heroMsg = (d, isEditing) => {
+  if (d.status === 'dayoff') return '오늘은 휴무로 등록되어 있어요.';
+  if (d.status === 'completed') {
+    return isEditing ? '수정 중이에요 · 변경 내용은 기록으로 남아요.' : `마감 완료 · ${hhmm(d.completedAt)} · 필요하면 수정할 수 있어요.`;
+  }
+  if (d.status === 'draft') return '입력 중이에요 · 금액은 실시간으로 원장님 화면에 반영돼요.';
+  return '오늘의 매출을 입력해 주세요 · 금액은 자동으로 저장돼요.';
+};
+
 export default function ManagerSettlement({ user, onLogout }) {
   const [d, setD] = useState(null);
   const [items, setItems] = useState({});
@@ -290,34 +277,41 @@ export default function ManagerSettlement({ user, onLogout }) {
       </header>
 
       <main className="max-w-3xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-10 space-y-4">
-        {/* 오늘 날짜 + 상태 — 한눈에 */}
-        <header className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-9 h-9 rounded-xl grid place-items-center text-[15px]" style={{ background: 'var(--accent-soft)' }}>📅</span>
-            <div className="min-w-0">
-              <div className="label">오늘 날짜</div>
-              <div className="num font-extrabold text-[22px] sm:text-[24px] leading-none mt-0.5">{formatDateKor(d.date)}</div>
+        {/* ── 히어로: 날짜 · 상태 · 총매출 ── */}
+        <section className="card p-5 sm:p-7">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[15px] shrink-0">📅</span>
+              <span className="num font-bold text-[15px] sm:text-[16px] truncate">{formatDateKor(d.date)}</span>
             </div>
+            <span className="badge shrink-0" style={STATUS_STYLE[d.status] || {}}>
+              <span className="dot" />
+              {STATUS_LABEL[d.status] || ''}
+            </span>
           </div>
-          <span
-            className="badge"
-            style={({
-              none: { background: '#EFECE4', color: '#6E6759' },
-              draft: { background: 'var(--amber-soft)', color: 'var(--amber)' },
-              completed: { background: 'var(--emerald-soft)', color: 'var(--emerald)' },
-              dayoff: { background: 'var(--sky-soft)', color: 'var(--sky)' },
-            })[d.status] || {}}
-          >
-            <span className="dot" />
-            {({ none: '미작성', draft: '작성 중', completed: '정산 완료', dayoff: '휴무' })[d.status] || ''}
-          </span>
-        </header>
 
-        <Banner
-          d={d} editing={editing} busy={busy}
-          onEdit={() => setModify(true)}
-          onDayoff={dayoff} onUnDayoff={undayoff}
-        />
+          <div className="mt-5 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <div className="label">총매출</div>
+              <div className="mt-1.5 num font-extrabold leading-none tracking-tight text-[46px] min-[420px]:text-[54px] sm:text-[60px]">
+                {krw(total)}<span className="text-lg font-bold ml-1" style={{ color: 'var(--muted)' }}>원</span>
+              </div>
+            </div>
+            <SaveIndicator state={saveState} savedAt={savedAt} editing={editing} />
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-[13px] font-medium" style={{ color: 'var(--ink-soft)' }}>{heroMsg(d, editing)}</p>
+            {d.status === 'completed' && !editing && (
+              <button className="btn h-9 px-4 text-[13px]" style={{ background: 'var(--emerald)', color: '#fff' }} onClick={() => setModify(true)}>
+                수정하기
+              </button>
+            )}
+            {d.status === 'dayoff' && (
+              <button className="btn btn-ghost h-9 px-4 text-[13px]" disabled={busy} onClick={undayoff}>휴무 취소</button>
+            )}
+          </div>
+        </section>
 
         {err && (
           <div className="rounded-xl px-4 py-3 text-[13.5px] font-semibold" style={{ background: 'var(--red-soft)', color: 'var(--red)' }}>{err}</div>
@@ -325,50 +319,51 @@ export default function ManagerSettlement({ user, onLogout }) {
 
         {d.status !== 'dayoff' && (
           <>
-            {/* 총매출 */}
-            <section className="card p-6 sm:p-8 flex items-center justify-between gap-4 flex-wrap">
-              <div>
-                <div className="label">총매출</div>
-                <div className="mt-2 num font-extrabold text-[42px] sm:text-[54px] leading-none tracking-tight">
-                  {krw(total)}<span className="text-lg ml-1" style={{ color: 'var(--muted)' }}>원</span>
-                </div>
-              </div>
-              <SaveIndicator state={saveState} savedAt={savedAt} editing={editing} />
+            {/* ── 결제수단별 매출 ── */}
+            <div className="flex items-center justify-between pt-1">
+              <span className="label">결제수단별 매출</span>
+              <span className="text-[11.5px] font-semibold" style={{ color: 'var(--muted)' }}>입력 즉시 자동 저장</span>
+            </div>
+            <section className="grid grid-cols-2 gap-2.5">
+              {PAYMENT_METHODS.map((m) => {
+                const isCash = m.key === 'cash';
+                return (
+                  <div
+                    key={m.key}
+                    className="rounded-2xl p-3 sm:p-3.5"
+                    style={isCash
+                      ? { border: '1.5px solid var(--accent)', background: 'var(--accent-soft)' }
+                      : { border: '1px solid var(--line)', background: '#FFFEFB' }}
+                  >
+                    <div className="label mb-1.5">{isCash ? '현금 매출' : m.label}</div>
+                    <MoneyInput value={items[m.key]} readOnly={!editing} onChange={(v) => setItems((p) => ({ ...p, [m.key]: v }))} />
+                  </div>
+                );
+              })}
             </section>
 
-            {/* 결제수단 입력 */}
-            <section className="grid grid-cols-2 gap-3">
-              {PAYMENT_METHODS.map((m) => (
-                <div key={m.key} className="card p-4 sm:p-5">
-                  <div className="label mb-0.5">{m.label}</div>
-                  <MoneyInput value={items[m.key]} readOnly={!editing} onChange={(v) => setItems((p) => ({ ...p, [m.key]: v }))} />
-                </div>
-              ))}
-            </section>
-
-            {/* 현금 실제 보유액 */}
-            <section className="card p-5 sm:p-6 space-y-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
+            {/* ── 현금 정산 ── */}
+            <div className="label pt-1">현금 정산</div>
+            <section className="card p-4 sm:p-5 space-y-3">
+              <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="label">현금 실제 보유액</div>
-                  <div className="text-[12px] mt-0.5" style={{ color: 'var(--muted)' }}>
-                    금고에 실제로 있는 현금을 입력하세요
-                  </div>
+                  <div className="text-[11.5px] mt-0.5" style={{ color: 'var(--muted)' }}>금고에 실제로 있는 현금</div>
                 </div>
                 <div className="w-40"><MoneyInput value={actualCash} readOnly={!editing} onChange={setActualCash} /></div>
               </div>
               <CashCounter disabled={!editing} onUse={(sum) => setActualCash(sum)} />
-              <div className="pt-3 border-t flex items-center justify-between gap-3" style={{ borderColor: 'var(--line)' }}>
-                <div className="label">차액 · 실제 보유 − 현금 매출</div>
-                <div className="num font-extrabold text-[22px] tracking-tight" style={{ color: diff == null ? 'var(--muted)' : (diff < 0 ? 'var(--red)' : 'var(--emerald)') }}>
+              <div className="pt-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--line)' }}>
+                <div className="label">차액 · 보유 − 현금 매출</div>
+                <div className="num font-extrabold text-[24px] tracking-tight" style={{ color: diff == null ? 'var(--muted)' : (diff < 0 ? 'var(--red)' : 'var(--emerald)') }}>
                   {diff == null ? '—' : (diff < 0 ? '−' : '+') + krw(Math.abs(diff)) + '원'}
                 </div>
               </div>
             </section>
 
-            {/* 특이사항 */}
-            <section className="card p-5 sm:p-6">
-              <label className="label block mb-2">특이사항 (선택)</label>
+            {/* ── 특이사항 ── */}
+            <div className="label pt-1">특이사항 <span className="font-normal" style={{ color: 'var(--muted)' }}>(선택)</span></div>
+            <section className="card p-4">
               <textarea
                 rows={2}
                 readOnly={!editing}
@@ -380,8 +375,8 @@ export default function ManagerSettlement({ user, onLogout }) {
               />
             </section>
 
-            {/* 완료 버튼 */}
-            <div className="pt-1" style={{ paddingBottom: 'max(6rem, env(safe-area-inset-bottom))' }}>
+            {/* ── 완료 버튼 ── */}
+            <div className="pt-2" style={{ paddingBottom: 'max(6rem, env(safe-area-inset-bottom))' }}>
               {d.status !== 'completed' && editing ? (
                 <button className="btn btn-primary w-full h-[56px] text-[17px]" disabled={busy} onClick={() => setConfirmOpen(true)}>
                   정산 완료
