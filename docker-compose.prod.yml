@@ -1,0 +1,36 @@
+# 실제 도메인 + 자동 HTTPS (Caddy) 배포용 구성
+# 사용 전: Caddyfile 의 '도메인주소' 를 실제 도메인으로 바꾸세요.
+# 실행: docker compose -f docker-compose.prod.yml up -d --build
+services:
+  app:
+    image: ghcr.io/wjdalsl222/salon-daily:latest
+    container_name: salon-daily
+    restart: unless-stopped
+    environment:
+      - PORT=4000
+    volumes:
+      - ./data:/app/data
+    networks: [salon]
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: salon-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks: [salon]
+
+networks:
+  salon:
+
+volumes:
+  caddy_data:
+  caddy_config:

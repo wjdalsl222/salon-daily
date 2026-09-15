@@ -1,0 +1,6 @@
+# 실제 도메인 연결을 위한 Caddy 설정 (자동 HTTPS)
+# 사용법: 아래 "도메인주소" 를 실제 구매한 도메인으로 바꾼 뒤
+#        docker compose -f docker-compose.prod.yml up -d --build
+도메인주소 {
+    reverse_proxy app:4000
+}
