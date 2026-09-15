@@ -1,0 +1,25 @@
+name: CI & Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node server/seed.js
+      - name: 서버 기동 스모크 테스트
+        run: |
+          PORT=4100 node server/index.js > /tmp/srv.log 2>&1 &
+          sleep 2
+          curl -sf http://localhost:4100/api/health && echo " / health OK"
+          curl -sf -X POST http://localhost:4100/api/login -H 'Content-Type: application/json' -d '{"username":"owner","password":"1234"}' > /dev/null && echo " / login OK"
+          kill %1

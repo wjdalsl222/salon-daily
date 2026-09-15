@@ -1,0 +1,10 @@
+node_modules
+.pw
+shots
+dist
+data
+server.log
+server.pid
+probe.mjs
+salon-daily.tar.gz
+.git
