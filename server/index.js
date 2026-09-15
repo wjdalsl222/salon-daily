@@ -312,6 +312,37 @@ app.get('/api/owner/month', requireAuth, requireRole('owner'), (req, res) => {
   res.json(buildMonth(mm, todayKST()));
 });
 
+app.get('/api/owner/statistics', requireAuth, requireRole('owner'), (_req, res) => {
+  const today = todayKST();
+  const cy = Number(today.slice(0, 4));
+  const cm = Number(today.slice(5, 7));
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d0 = new Date(cy, cm - 1 - i, 1);
+    const key = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, '0')}`;
+    const m = buildMonth(key, today);
+    const methodSums = {};
+    for (const dd of m.daily) {
+      if (dd.status !== 'completed') continue;
+      for (const [k, v] of Object.entries(dd.items)) methodSums[k] = (methodSums[k] || 0) + v;
+    }
+    months.push({
+      key,
+      total: m.total,
+      completedCount: m.daily.filter((x) => x.status === 'completed').length,
+      dayoffCount: m.daily.filter((x) => x.status === 'dayoff').length,
+      avgPerDay: m.avgPerDay,
+      best: m.best,
+      methodSums,
+    });
+  }
+  for (let i = 1; i < months.length; i++) months[i].prevTotal = months[i - 1].total;
+  const current = months[months.length - 1];
+  const previous = months[months.length - 2];
+  const diffPct = previous && previous.total ? Math.round(((current.total - previous.total) / previous.total) * 1000) / 10 : null;
+  res.json({ months, current, previous, diffPct });
+});
+
 app.get('/api/owner/settlement/:date', requireAuth, requireRole('owner'), (req, res) => {
   const date = String(req.params.date || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: '날짜 형식이 올바르지 않습니다.' });

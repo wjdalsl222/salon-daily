@@ -4,6 +4,7 @@ import { api } from './api.js';
 import Login from './pages/Login.jsx';
 import OwnerDashboard from './pages/OwnerDashboard.jsx';
 import OwnerHistory from './pages/OwnerHistory.jsx';
+import OwnerStatistics from './pages/OwnerStatistics.jsx';
 import SettlementDetail from './pages/SettlementDetail.jsx';
 import AccountPage from './pages/AccountPage.jsx';
 import ManagerSettlement from './pages/ManagerSettlement.jsx';
@@ -94,8 +95,20 @@ export default function App() {
             )
           }
         />
-        <Route
-          path="/settlement/:date"
+      <Route
+        path="/statistics"
+        element={
+          !user ? (
+            <Navigate to="/login" replace state={{ from: location }} />
+          ) : user.role !== 'owner' ? (
+            <Navigate to="/" replace />
+          ) : (
+            <OwnerStatistics user={user} onLogout={logout} />
+          )
+        }
+      />
+      <Route
+        path="/settlement/:date"
           element={
             !user ? (
               <Navigate to="/login" replace state={{ from: location }} />

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 const TABS = [
   { to: '/', label: '대시보드' },
   { to: '/history', label: '과거 정산' },
+  { to: '/statistics', label: '통계' },
   { to: '/account', label: '계정' },
 ];
 

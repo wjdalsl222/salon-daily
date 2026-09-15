@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 const TABS = [
   { to: '/', label: '대시보드', icon: '🏠' },
   { to: '/history', label: '과거 정산', icon: '📅' },
+  { to: '/statistics', label: '통계', icon: '📊' },
   { to: '/account', label: '계정', icon: '⚙️' },
 ];
 
@@ -23,7 +24,7 @@ export default function BottomNav() {
         boxShadow: '0 -2px 12px rgba(38,34,32,0.05)',
       }}
     >
-      <div className="grid grid-cols-3 h-[60px]">
+      <div className="grid grid-cols-4 h-[60px]">
         {TABS.map((t) => {
           const active = pathname === t.to;
           return (
