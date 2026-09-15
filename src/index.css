@@ -129,7 +129,33 @@ body {
 @media (min-width: 640px) {
   .amount-input { font-size: 26px; }
 }
-.amount-input::placeholder { color: #C9C2B2; font-weight: 600; }
+.amount-input::placeholder { color: #B9B0A0; font-weight: 600; }
+
+/* 금액 입력 상자 — 입력 가능함을 한눈에 */
+.amount-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: #FBFAF6;
+  padding: 11px 12px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.amount-box:focus-within {
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(15, 107, 92, 0.14);
+}
+.amount-box.readonly {
+  background: #F2EFE7;
+}
+.amount-unit {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
 
 /* 스크롤바 정돈 */
 ::-webkit-scrollbar { width: 10px; height: 10px; }

@@ -7,7 +7,7 @@ import { krw, hhmm, formatDateKor } from '../format.js';
 function MoneyInput({ value, onChange, readOnly }) {
   const display = value === '' || value == null ? '' : Number(value).toLocaleString('ko-KR');
   return (
-    <div className="relative">
+    <div className={`amount-box ${readOnly ? 'readonly' : ''}`}>
       <input
         inputMode="numeric"
         value={display}
@@ -16,11 +16,11 @@ function MoneyInput({ value, onChange, readOnly }) {
           const digits = e.target.value.replace(/[^\d]/g, '');
           onChange(digits === '' ? '' : Number(digits));
         }}
-        className="amount-input w-full pr-10"
+        className="amount-input w-full"
         placeholder="0"
         autoComplete="off"
       />
-      <span className="absolute right-0 top-1/2 -translate-y-1/2 font-bold" style={{ color: 'var(--muted)' }}>원</span>
+      <span className="amount-unit">원</span>
     </div>
   );
 }
@@ -290,6 +290,29 @@ export default function ManagerSettlement({ user, onLogout }) {
       </header>
 
       <main className="max-w-3xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-10 space-y-4">
+        {/* 오늘 날짜 + 상태 — 한눈에 */}
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-9 h-9 rounded-xl grid place-items-center text-[15px]" style={{ background: 'var(--accent-soft)' }}>📅</span>
+            <div className="min-w-0">
+              <div className="label">오늘 날짜</div>
+              <div className="num font-extrabold text-[22px] sm:text-[24px] leading-none mt-0.5">{formatDateKor(d.date)}</div>
+            </div>
+          </div>
+          <span
+            className="badge"
+            style={({
+              none: { background: '#EFECE4', color: '#6E6759' },
+              draft: { background: 'var(--amber-soft)', color: 'var(--amber)' },
+              completed: { background: 'var(--emerald-soft)', color: 'var(--emerald)' },
+              dayoff: { background: 'var(--sky-soft)', color: 'var(--sky)' },
+            })[d.status] || {}}
+          >
+            <span className="dot" />
+            {({ none: '미작성', draft: '작성 중', completed: '정산 완료', dayoff: '휴무' })[d.status] || ''}
+          </span>
+        </header>
+
         <Banner
           d={d} editing={editing} busy={busy}
           onEdit={() => setModify(true)}
