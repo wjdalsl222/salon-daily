@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
+import { hashPassword, verifyPassword } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(__dirname, '..', 'data');
@@ -60,7 +61,24 @@ CREATE TABLE IF NOT EXISTS day_offs (
 );
 `);
 
+// 첫 기동 시 계정이 하나도 없으면 기본 계정 자동 생성 (Docker 첫 실행 대비 — 로그인 불가 방지)
+export function ensureDefaultUsers() {
+  const c = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
+  if (c > 0) return 0;
+  const ins = db.prepare(`INSERT INTO users (name, username, password_hash, role, active) VALUES (?, ?, ?, ?, 1)`);
+  ins.run('원장님', 'owner', hashPassword('1234'), 'owner');
+  ins.run('매니저', 'manager', hashPassword('1234'), 'manager');
+  return 2;
+}
+
+ensureDefaultUsers();
+
 export function mapUser(row) {
   if (!row) return null;
-  return { id: row.id, name: row.name, username: row.username, role: row.role };
+  // 기본 비밀번호(1234) 사용 중인지 플래그 — 실사용 안전 유도용
+  let needsDefaultPassword = false;
+  try {
+    needsDefaultPassword = verifyPassword('1234', row.password_hash);
+  } catch { /* 다르면 false 유지 */ }
+  return { id: row.id, name: row.name, username: row.username, role: row.role, needsDefaultPassword };
 }

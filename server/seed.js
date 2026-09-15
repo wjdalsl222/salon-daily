@@ -2,26 +2,45 @@ import { db } from './db.js';
 import { hashPassword } from './auth.js';
 import { emptyItems, amountSum, todayKST } from './constants.js';
 
-const today = todayKST();
-
-// ---- 시드: 계정 ----
+// ---------------------------------------------------------------
+//  계정: 기본 2개 보장
+//  - 재실행 시 기존 비밀번호 유지 (RESET_PASSWORDS=1 이면 1234로 초기화)
+// ---------------------------------------------------------------
+const doReset = process.env.RESET_PASSWORDS === '1';
 const upsertUser = (name, username, password, role) => {
-  db.prepare(
-    `INSERT INTO users (name, username, password_hash, role, active)
-     VALUES (?, ?, ?, ?, 1)
-     ON CONFLICT(username) DO UPDATE SET name=excluded.name, role=excluded.role, password_hash=excluded.password_hash, active=1`
-  ).run(name, username, hashPassword(password), role);
+  if (doReset) {
+    db.prepare(
+      `INSERT INTO users (name, username, password_hash, role, active)
+       VALUES (?, ?, ?, ?, 1)
+       ON CONFLICT(username) DO UPDATE SET name=excluded.name, role=excluded.role, password_hash=excluded.password_hash, active=1`
+    ).run(name, username, hashPassword(password), role);
+  } else {
+    db.prepare(
+      `INSERT INTO users (name, username, password_hash, role, active)
+       VALUES (?, ?, ?, ?, 1)
+       ON CONFLICT(username) DO UPDATE SET name=excluded.name, role=excluded.role, active=1`
+    ).run(name, username, hashPassword(password), role);
+  }
 };
 
 upsertUser('원장님', 'owner', '1234', 'owner');
 upsertUser('매니저', 'manager', '1234', 'manager');
 
-// ---- 시드: 월간 과거 정산 (이번 달 1일 ~ 어제) ----
-// 2026-09: 1..14 중 7일(월), 13일(일) 제외 -> 이번 달 월요일 휴무 스타일
+// ---------------------------------------------------------------
+//  데모 데이터: SEED_DEMO=1 일 때만 생성 (실사용 DB 오염 방지)
+// ---------------------------------------------------------------
+if (process.env.SEED_DEMO !== '1') {
+  console.log(`✔ 계정 준비 완료 (데모 데이터는 SEED_DEMO=1 로만 생성)`);
+  process.exit(0);
+}
+
+const today = todayKST();
+console.log(`✔ 데모 데이터 생성 (오늘: ${today})`);
+
 const seeded = (() => {
   const d = new Date();
   const year = d.getFullYear();
-  const month = d.getMonth(); // 0-based
+  const month = d.getMonth();
   const last = new Date(year, month + 1, 0).getDate();
   const rows = [];
   for (let day = 1; day <= last; day++) {
@@ -35,7 +54,7 @@ const seeded = (() => {
 const rand = (min, max) => Math.floor(min + Math.random() * (max - min));
 
 for (const { date, weekday } of seeded) {
-  if (date >= today) continue; // 오늘 이후는 제외
+  if (date >= today) continue;
   const weekend = weekday === 0 || weekday === 6;
   const base = weekend ? rand(2100000, 2600000) : rand(1400000, 1900000);
   const card = Math.round(base * rand(35, 45) / 100);
@@ -46,7 +65,7 @@ for (const { date, weekday } of seeded) {
   const etc = Math.max(0, base - card - cash - naverpay - asanpay - bank);
   const amounts = { card, cash, naverpay, asanpay, bank, etc };
   const total = amountSum(amounts);
-  const actualCash = cash + rand(0, 40000); // 보유 현금 약간 차이
+  const actualCash = cash + rand(0, 40000);
 
   db.prepare(
     `INSERT OR IGNORE INTO settlements (date, status, manager_id, note, actual_cash, submitted_at, completed_at)
@@ -59,7 +78,7 @@ for (const { date, weekday } of seeded) {
   );
   for (const [k, v] of Object.entries(amounts)) ins.run(s.id, k, v);
 
-  // 시드: 일부 날짜에 완료 후 수정 기록 (타임라인 데모용)
+  // 일부 날짜에 완료 후 수정 기록 (타임라인 데모용)
   const dayNum = Number(date.slice(8, 10));
   if (dayNum === 1 || dayNum === 10) {
     const alreadyMod = db.prepare(
@@ -75,8 +94,7 @@ for (const { date, weekday } of seeded) {
   }
 }
 
-// ---- 시드: 어제 + 오늘 기본 상태 ----
-// 오늘: 아직 미작성 (빈 상태) / 이번 달 월요일 휴무 데이터
+// 월요일 정기 휴무 데모
 for (const row of seeded) {
   const dt = new Date(row.date + 'T00:00:00');
   if (dt.getDay() === 1) {
@@ -87,5 +105,4 @@ for (const row of seeded) {
 
 db.prepare(`DELETE FROM settlements WHERE date=? AND status='draft'`).run(today);
 
-console.log(`✔ 시드 완료 (오늘: ${today})`);
 console.log(`  계정: owner/1234 (원장님), manager/1234 (매니저)`);

@@ -1,11 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api.js';
 
-const DEMO = [
-  { label: '원장님', username: 'owner', password: '1234', hint: '대시보드 확인' },
-  { label: '매니저', username: 'manager', password: '1234', hint: '정산 작성' },
-];
-
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -30,12 +25,6 @@ export default function Login({ onLogin }) {
     }
   };
 
-  const quick = (u) => {
-    setUsername(u);
-    setPassword('');
-    setError('');
-  };
-
   return (
     <div className="min-h-full flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
@@ -53,7 +42,7 @@ export default function Login({ onLogin }) {
               <label className="label block mb-1.5">아이디</label>
               <input
                 className="w-full h-12 rounded-xl border px-4 text-[16px] outline-none transition focus:ring-2"
-                style={{ borderColor: 'var(--line)', background: 'var(--paper)', backgroundColor: '#FBFAF6' }}
+                style={{ borderColor: 'var(--line)', background: '#FBFAF6' }}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
@@ -84,22 +73,6 @@ export default function Login({ onLogin }) {
             {busy ? '로그인 중…' : '로그인'}
           </button>
         </form>
-
-        <div className="mt-5">
-          <div className="label text-center mb-2.5">체험 계정으로 바로 시작</div>
-          <div className="grid grid-cols-2 gap-3">
-            {DEMO.map((d) => (
-              <button key={d.username} type="button" onClick={() => quick(d.username)}
-                className="card p-3.5 text-left hover:shadow-md transition cursor-pointer"
-                style={{ background: '#FBFAF6' }}>
-                <div className="font-extrabold text-[15px]" style={{ color: 'var(--ink)' }}>{d.label}</div>
-                <div className="text-[12px] mt-0.5" style={{ color: 'var(--muted)' }}>
-                  id <span className="num font-bold">{d.username}</span> · {d.hint}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
